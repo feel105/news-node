@@ -7,7 +7,6 @@ const newsController = {
   getAllNews: async () => {
     try {
       const newsObject = await newsService.find();
-      console.log(newsObject, " News_Obje ");
       if (newsObject) {
         return { success: true, payload: newsObject };
       }
@@ -16,9 +15,9 @@ const newsController = {
       return { success: false, message: error.message };
     }
   },
-  getNewsById: async (req) => {
+  getNewsById: async (id) => {
     try {
-      const newsObject = await newsService.findById(req.id);
+      const newsObject = await newsService.findById(id);
       if (newsObject) {
         return { success: true, payload: newsObject };
       }
@@ -29,41 +28,31 @@ const newsController = {
   },
   addNews: async (req, socket) => {
     try {
-      /*const validationRule = {
-        title: "required|string",
-        subTitle: "required|string",
-        description: "required|string",
-      };
-       var response = await validator(req, validationRule, {});
-       console.log(response, "res");
-      /*validator(req, validationRule, {}, async (err, status) => {
-        console.log(err, status);
-        if (!status) {
-          return { success: false, message: err.Errors.errors };
-        } else {         
-        }
-      });*/
-      var reqBody = {
-        author: socket.id,
-        title: req.title,
-        subTitle: req.subTitle,
-        description: req.description,
-      };
-      const newObj = new newsService(reqBody);
-      const newObject = await newObj.save();
-      return { success: true, payload: newObject };
+      console.log(socket.decoded.id);
+      if (socket.decoded.id) {
+        var reqBody = {
+          author: socket.decoded,
+          title: req.title,
+          subTitle: req.subTitle,
+          description: req.description,
+        };
+        const newObj = new newsService(reqBody);
+        const newObject = await newObj.save();
+        return { success: true, payload: newObject };
+      }
+      return { success: false, message: "Author Not Found" };
     } catch (error) {
       return { success: false, message: error.message };
     }
   },
-  editNews: async (req) => {
+  editNews: async (req, socket) => {
     try {
       var reqBody = {
         title: req.title,
         subTitle: req.subTitle,
         description: req.description,
       };
-      var conditions = { _id: req.id }; //and where author : socket.id
+      var conditions = { _id: req._id, "author.id": socket.decoded.id }; //and where author : socket.id
       const newsEditObject = await newsService.findOneAndUpdate(
         conditions,
         reqBody,
@@ -77,15 +66,40 @@ const newsController = {
       return { success: false, message: error.message };
     }
   },
-  deleteNews: async (req) => {
+  deleteNews: async (id, socket) => {
     try {
-      //var id = `${req._id}`;
-      //var ID = mongoose.Types.ObjectId(id);
-      const newsDeleteObject = await newsService.deleteOne({ _id: req.id });
+      const newsDeleteObject = await newsService.deleteOne({
+        _id: id,
+        "author.id": socket.decoded.id,
+      });
       if (newsDeleteObject.deletedCount) {
         return { success: true, payload: newsDeleteObject };
       }
-      return { success: true, payload: "Not Data Found" };
+      return { success: false, message: "Not Data Found" };
+    } catch (error) {
+      return { success: false, message: error.message };
+    }
+  },
+  getNewsWithComments: async () => {
+    try {
+      var resources = {};
+      const newsObject = await newsService.aggregate([
+        {
+          $lookup: {
+            from: "comments", // from collection name
+            localField: "_id",
+            foreignField: "news_id",
+            as: "comments",
+          },
+          /* $lookup: {
+            from: "authors", // from collection name object save of author 
+            localField: "author",
+            foreignField: "_id",
+            as: "author",
+          },*/
+        },
+      ]);
+      return { success: true, payload: newsObject };
     } catch (error) {
       return { success: false, message: error.message };
     }

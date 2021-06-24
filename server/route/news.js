@@ -1,21 +1,12 @@
 const express = require("express");
 const NewsRouting = express.Router();
 const newsController = require("../controller/newsController");
+const commentController = require("../controller/commentController");
 const jwt = require("jsonwebtoken");
 const config = require("../config/index");
 const authorService = require("../models/authors");
 
-// authRouting
-//   .get("/", newsController.getAllNews)
-//   .post("/", newsController.addNews)
-//   .put("/:newsId", newsController.editNews)
-//   .delete("/:newsId", newsController.deleteNews);
-// module.exports = authRouting;
-//const Router = require("express").Router;
-//const router = new Router();
-
 module.exports = (io) => {
-  const documents = {};
   io.use(function (socket, next) {
     if (socket.handshake.query && socket.handshake.query.token) {
       const secret = config.secret;
@@ -33,58 +24,63 @@ module.exports = (io) => {
       return;
     }
   }).on("connection", (socket) => {
-    // let previousId;
-    // const safeJoin = (currentId) => {
-    //   socket.leave(previousId);
-    //   socket.join(currentId, () =>
-    //     console.log(`Socket ${socket.id} joined room ${currentId}`)
-    //   );
-    //   previousId = currentId;
-    // };
-    socket.on("allNews", async (req) => {
-      console.log("allNews");
-      const newsObject = await newsController.getAllNews(req);
-      io.emit("allNews", newsObject);
+    socket.on("allNews", async () => {
+      sendAllNews();
     });
-    socket.on("getNewsById", async (req) => {
-      const newsObject = await newsController.getNewsById(req);
+    socket.on("getNewsById", async (id) => {
+      const newsObject = await newsController.getNewsById(id);
       socket.emit("getNewsById", newsObject);
-      //safeJoin(docId);
-      //socket.emit("document", documents[docId]);
     });
+
+    socket.on("getNewsComments", async () => {
+      console.log("getNewsWithComments_ca");
+      const newsObject = await newsController.getNewsWithComments();
+      io.emit("getNewsComments", newsObject);
+      socket.emit("getNewsComments", newsObject);
+    });
+
+    //add news
     socket.on("addNews", async (req) => {
-      //add doc using id title subtitle desc
-      //documents[doc.id] = doc;
-      //safeJoin(doc.id);
-      console.log("addNews");
       const newsObject = await newsController.addNews(req, socket);
-      console.log(newsObject, " NewOVjec ");
       socket.emit("addNews", newsObject);
       if (newsObject.success) {
-        io.emit("allNews", newsObject);
+        sendAllNews();
       }
     });
+
+    //Edit news get event send only that author
     socket.on("editNews", async (req) => {
       const newsObject = await newsController.editNews(req, socket);
-      console.log(newsObject, " EditNews ");
       socket.emit("editNews", newsObject);
       if (newsObject.success) {
-        io.emit("allNews", newsObject);
+        sendAllNews();
       }
-      //documents[doc.id] = doc;
-      //socket.to(doc.id).emit("document", doc);
     });
-    socket.on("deleteNews", async (req) => {
-      const newsObject = await newsController.deleteNews(req);
-      console.log("esEDelet", newsObject);
+
+    //delete news using id
+    socket.on("deleteNews", async (id) => {
+      const newsObject = await newsController.deleteNews(id, socket);
       socket.emit("deleteNews", newsObject);
       if (newsObject.success) {
-        socket.emit("allNews", newsObject);
+        sendAllNews();
       }
     });
-    //io.emit("documents", Object.keys(documents));
-    //socket.emit("id", socket.id);
-    console.log(`Socket ${socket.id} has connected`);
+
+    //send all news to all Author
+    const sendAllNews = async () => {
+      const newsObject = await newsController.getNewsWithComments(); //getAllNews
+      io.emit("allNews", newsObject); //io emit send to all user
+    };
+    //console.log(`Socket ${socket.id} has connected`);
+
+    //add comment using
+    socket.on("addComments", async (req) => {
+      const newsObject = await commentController.addComments(req, socket);
+      socket.emit("addComments", newsObject);
+      if (newsObject.success) {
+        sendAllNews();
+      }
+    });
   });
   return NewsRouting;
 };

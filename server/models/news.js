@@ -2,7 +2,6 @@
 const mongoose = require("mongoose");
 const { v4: uuidv4 } = require("uuid");
 const Schema = mongoose.Schema;
-var comments = Schema({ comment: String, author: Object });
 
 /**NewsSchema**/
 const NewsSchema = new Schema(
@@ -15,9 +14,9 @@ const NewsSchema = new Schema(
     subTitle: { type: String, default: "" },
     description: { type: String, default: "" },
     //author: { type: String, ref: "Author" },
-    // comments: { type: String, ref: "Comments" }
+    //comments: { type: String, ref: "Comments" }
     author: { type: Object },
-    comments: { type: Array },
+    //comments: { type: Array },
   },
   {
     timestamps: true,
@@ -26,20 +25,19 @@ const NewsSchema = new Schema(
 );
 
 /**Validation**/
-NewsSchema.path("title").validate(function (name) {
-  return name.length;
+NewsSchema.path("title").validate(function (title) {
+  return title.length;
 }, "Title is required");
-NewsSchema.path("subTitle").validate(function (email) {
-  return email.length;
+NewsSchema.path("subTitle").validate(function (subTitle) {
+  return subTitle.length;
 }, "SubTitle is required");
-NewsSchema.path("description").validate(function (password) {
-  return password.length;
+NewsSchema.path("description").validate(function (desc) {
+  return desc.length;
 }, "Description is required");
 
 /** pre save **/
 NewsSchema.pre("save", function (next) {
   if (!this.isNew) return next();
-
   next();
 });
 

@@ -14,7 +14,7 @@ const AuthorSchema = new Schema(
     name: { type: String, default: "" },
     email: { type: String, default: "" },
     encrypt_password: { type: String, default: "" },
-    authToken: { type: String, expires: "1m", default: "" },
+    authToken: { type: String, default: "" },
   },
   {
     timestamps: true,
